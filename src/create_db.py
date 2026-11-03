@@ -13,9 +13,9 @@ conn = sqlite3.connect('../data/culinary.db')
 # write the data to a sqlite table
 # recipe.to_sql('recipes', conn, if_exists='append', index = False)
 
-ingredients = pd.read_csv('../data/02_Ingredients.csv')
-cpd_ingredients = pd.read_csv('../data/03_Compound_Ingredients.csv')
-alias = pd.read_csv('../data/04_Recipe-Ingredients_Aliases.csv')
+ingredients = pd.read_csv('../data/CulinaryDB/02_Ingredients.csv')
+cpd_ingredients = pd.read_csv('../data/Culinary/DB03_Compound_Ingredients.csv')
+alias = pd.read_csv('../data/CulinaryDB/04_Recipe-Ingredients_Aliases.csv')
 
 ingredients.to_sql('ingredients', conn, if_exists='append', index = False)
 cpd_ingredients.to_sql('cpd_ingredients', conn, if_exists='append', index = False)
