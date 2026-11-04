@@ -1,6 +1,10 @@
 import pandas as pd
 import re
+import numpy as np
 from sklearn.feature_extraction.text import CountVectorizer, TfidfVectorizer
+# different types of onion used ???
+identified_gram = ['all purpose flour','ground black pepper','black pepper','white pepper','chile pepper(s)','olive oil','green bell pepper','red bell pepper','bell pepper(S)','vanilla extract','parmesan cheese','cheddar cheese','vegetable oil','red pepper flakes','crushed red pepper','baking soda','cayenne pepper','baking powder',
+                   'bay leaf','bay leaves','sesame oil','red wine','red wine vinegar','sour cream','heavy cream','ground pepper','brown sugar','white sugar','chicken breast','white wine','wine vinegar','balsamic vinegar','chicken broth','soy sauce','cider vinegar','garam masala']
 
 def remove_number(reduced_recipe_ingredient):
     reduced_recipe_ingredient['original_ingredient'] = reduced_recipe_ingredient['original_ingredient'].str.replace(r'\d+[A-Za-z]*\d*', '', regex=True)
@@ -12,18 +16,48 @@ def remove_accompaniment(reduced_recipe_ingredient):
     reduced_recipe_ingredient = reduced_recipe_ingredient[~reduced_recipe_ingredient['original_ingredient'].str.contains("accompaniment|accompaniments",flags=re.IGNORECASE,regex=True)]
     return reduced_recipe_ingredient
 
-def create_bow_df(ingredients_in_string):
-    bow_counter= CountVectorizer()
+def create_ngram_df(ingredients_in_string, n=2):
+    ngram_counter= CountVectorizer(ngram_range=(n,n))
+    ngram_matrix = ngram_counter.fit_transform(ingredients_in_string)
 
+    # calculate to see which bigram has most number
+    ngram_sum = ngram_matrix.sum(axis=0)
+    # make the matrix to array
+    ngram_sum = ngram_sum.A1
+
+    vocab_df = pd.DataFrame({'terms':ngram_counter.vocabulary_.keys(), 'indices':ngram_counter.vocabulary_.values()})
+    vocab_df.sort_values(by='indices',inplace=True)
+    vocab_df['ngram_count'] = ngram_sum
+
+    
+   
+    return vocab_df
+
+
+def create_tfidf(ingredients_in_string):
+    bow_counter= TfidfVectorizer(ngram_range=(1,1))
     bow_df = pd.DataFrame(bow_counter.fit_transform(ingredients_in_string).toarray())
 
     vocab_df = pd.DataFrame({'terms':bow_counter.vocabulary_.keys(), 'indices':bow_counter.vocabulary_.values()})
     vocab_df.sort_values(by='indices',inplace=True)
     bow_df.columns = vocab_df['terms']
+
+    return bow_df
+
+
+def create_bow_df(ingredients_in_string):
+    bow_counter= CountVectorizer(ngram_range=(1,1))
+    bow_df = pd.DataFrame(bow_counter.fit_transform(ingredients_in_string).toarray())
+
+    vocab_df = pd.DataFrame({'terms':bow_counter.vocabulary_.keys(), 'indices':bow_counter.vocabulary_.values()})
+    vocab_df.sort_values(by='indices',inplace=True)
+    bow_df.columns = vocab_df['terms']
+
     return bow_df
 
 def recipe_with_rare_ingredients(recipe_ingredient):
     # to exclude ingredients that appear less than 10 times
+    # TODO may not need this!!!
     ingredient_recipe_presence_count = pd.DataFrame(recipe_ingredient.groupby(by='aliased_ingredient')['recipe_id'].nunique())
     ingredient_recipe_presence_count.reset_index(inplace=True)
     ingredient_recipe_presence_count.columns = ['aliased_ingredient','recipe_count']
@@ -68,7 +102,12 @@ def main():
     reduced_recipe_ingredient = remove_accompaniment(reduced_recipe_ingredient)
     reduced_recipe_ingredient = remove_number(reduced_recipe_ingredient)
     ingredients_in_string = combine_ingredients_to_str(reduced_recipe_ingredient) 
-    ingredients_bow = create_bow_df(ingredients_in_string)
+
+
+    ingredient_tfidf = create_tfidf(ingredients_in_string)
+    ingredients_bow= create_bow_df(ingredients_in_string)
+    doc_freq = pd.DataFrame({'bow':ingredients_bow.columns,'doc_freq':np.count_nonzero(ingredients_bow,axis=0)})
+    ingredients_ngram = create_ngram_df(ingredients_in_string, n=2)
     print('finish')
 
 
